@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SyncPulse AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0d14;
+  --surface: #13131f;
+  --surface2: #1a1a2e;
+  --surface3: #1f1f35;
+  --indigo: #4f46e5;
+  --purple: #7c3aed;
+  --lavender: #a78bfa;
+  --pink: #ec4899;
+  --cyan: #06b6d4;
+  --green: #10b981;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --text: #f1f0ff;
+  --text2: #9896b8;
+  --text3: #5d5b7a;
+  --border: rgba(167,139,250,0.12);
+  --border2: rgba(167,139,250,0.2);
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { height:100%; overflow:hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+  font-size: 15px;
+}
+
+/* ── 배경 효과 ── */
+.bg-orbs {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+}
+.orb {
+  position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.15;
+}
+.orb1 { width:400px; height:400px; background:var(--purple); top:-100px; left:-100px; }
+.orb2 { width:350px; height:350px; background:var(--indigo); bottom:-80px; right:-80px; }
+.orb3 { width:250px; height:250px; background:var(--cyan); top:40%; left:50%; transform:translate(-50%,-50%); opacity:0.08; }
+
+/* ── 레이아웃 ── */
+.app { position:relative; z-index:1; height:100vh; display:flex; flex-direction:column; }
+
+/* ── 탑바 ── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(13,13,20,0.8);
+  backdrop-filter: blur(20px);
+  flex-shrink: 0;
+}
+.topbar-logo { display:flex; align-items:center; gap:10px; }
+.logo-icon {
+  width:36px; height:36px; border-radius:10px;
+  background: linear-gradient(135deg, var(--purple), var(--indigo));
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; box-shadow: 0 4px 16px rgba(124,58,237,0.4);
+}
+.logo-name { font-size:17px; font-weight:800; letter-spacing:-0.5px; }
+.logo-name span { color: var(--lavender); }
+.api-btn {
+  padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border2);
+  background: var(--surface2); color: var(--text2); font-size: 12px;
+  cursor: pointer; font-family: inherit; transition: all 0.2s;
+}
+.api-btn:active { background: var(--surface3); }
+.api-btn.saved { color: var(--green); border-color: rgba(16,185,129,0.3); }
+
+/* ── 탭 ── */
+.tabs {
+  display: flex; padding: 12px 16px 0;
+  gap: 4px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: rgba(13,13,20,0.6);
+  backdrop-filter: blur(10px);
+}
+.tab {
+  flex: 1; padding: 10px 4px; text-align: center;
+  font-size: 12px; font-weight: 600; color: var(--text3);
+  cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all 0.2s; border-radius: 8px 8px 0 0;
+  letter-spacing: -0.2px;
+}
+.tab.active { color: var(--lavender); border-bottom-color: var(--lavender); }
+.tab span { display:block; font-size:18px; margin-bottom:3px; }
+
+/* ── 콘텐츠 영역 ── */
+.content { flex:1; overflow-y:auto; padding:16px; }
+.content::-webkit-scrollbar { width:3px; }
+.content::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+.screen { display:none; }
+.screen.active { display:block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)} }
+
+/* ── 카드 ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.card-title {
+  font-size:13px; font-weight:700; color:var(--text2);
+  letter-spacing:0.5px; text-transform:uppercase;
+  margin-bottom:14px; display:flex; align-items:center; gap:8px;
+}
+.card-title .dot {
+  width:6px; height:6px; border-radius:50%;
+}
+
+/* ══════════════════════════════
+   탭1: CODE 성향 테스트
+══════════════════════════════ */
+.code-types { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+.code-type-card {
+  border-radius:12px; padding:14px; border:2px solid transparent;
+  cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden;
+}
+.code-type-card::before {
+  content:''; position:absolute; inset:0; opacity:0.08; border-radius:10px;
+}
+.code-d { border-color:rgba(239,68,68,0.3); }
+.code-d::before { background:var(--red); }
+.code-o { border-color:rgba(245,158,11,0.3); }
+.code-o::before { background:var(--amber); }
+.code-c { border-color:rgba(16,185,129,0.3); }
+.code-c::before { background:var(--green); }
+.code-e { border-color:rgba(79,70,229,0.3); }
+.code-e::before { background:var(--indigo); }
+.code-type-card.selected { border-width:2px; }
+.code-d.selected { border-color:var(--red); box-shadow:0 0 16px rgba(239,68,68,0.2); }
+.code-o.selected { border-color:var(--amber); box-shadow:0 0 16px rgba(245,158,11,0.2); }
+.code-c.selected { border-color:var(--green); box-shadow:0 0 16px rgba(16,185,129,0.2); }
+.code-e.selected { border-color:var(--indigo); box-shadow:0 0 16px rgba(79,70,229,0.2); }
+.code-letter { font-size:28px; font-weight:800; font-family:'JetBrains Mono',monospace; margin-bottom:4px; }
+.code-d .code-letter { color:var(--red); }
+.code-o .code-letter { color:var(--amber); }
+.code-c .code-letter { color:var(--green); }
+.code-e .code-letter { color:var(--indigo); }
+.code-name { font-size:12px; font-weight:700; margin-bottom:3px; }
+.code-desc { font-size:11px; color:var(--text2); line-height:1.4; }
+
+/* 슬라이더 질문 */
+.q-item { margin-bottom:18px; }
+.q-text { font-size:13px; font-weight:500; margin-bottom:10px; line-height:1.5; color:var(--text); }
+.q-num { color:var(--lavender); font-weight:700; margin-right:6px; }
+.slider-wrap { display:flex; align-items:center; gap:10px; }
+.slider-label { font-size:11px; color:var(--text3); width:40px; }
+.slider-label.right { text-align:right; }
+input[type=range] {
+  flex:1; height:4px; border-radius:2px; outline:none; cursor:pointer;
+  -webkit-appearance:none; appearance:none;
+  background: linear-gradient(to right, var(--lavender) 0%, var(--lavender) 50%, var(--surface3) 50%, var(--surface3) 100%);
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+  background: var(--lavender); cursor:pointer;
+  box-shadow:0 0 8px rgba(167,139,250,0.5);
+}
+.slider-val {
+  font-family:'JetBrains Mono',monospace; font-size:13px;
+  color:var(--lavender); font-weight:600; width:20px; text-align:center;
+}
+
+/* 팀 멤버 추가 */
+.member-input-row { display:flex; gap:8px; margin-bottom:14px; }
+.inp {
+  flex:1; background:var(--surface2); border:1px solid var(--border);
+  border-radius:10px; padding:10px 14px; color:var(--text);
+  font-family:inherit; font-size:13px; outline:none;
+  transition:border-color 0.2s;
+}
+.inp:focus { border-color:var(--lavender); }
+.inp::placeholder { color:var(--text3); }
+.btn-primary {
+  background:linear-gradient(135deg, var(--purple), var(--indigo));
+  border:none; border-radius:10px; padding:10px 16px;
+  color:white; font-size:13px; font-weight:700; cursor:pointer;
+  font-family:inherit; transition:opacity 0.2s, transform 0.1s;
+  white-space:nowrap;
+}
+.btn-primary:active { transform:scale(0.97); }
+.btn-secondary {
+  background:var(--surface2); border:1px solid var(--border2);
+  border-radius:10px; padding:10px 16px;
+  color:var(--text); font-size:13px; font-weight:600; cursor:pointer;
+  font-family:inherit; transition:all 0.2s;
+}
+.btn-secondary:active { background:var(--surface3); }
+
+/* 멤버 목록 */
+.member-list { display:flex; flex-direction:column; gap:8px; }
+.member-item {
+  display:flex; align-items:center; gap:12px;
+  background:var(--surface2); border-radius:12px; padding:12px 14px;
+  border:1px solid var(--border);
+}
+.member-avatar {
+  width:36px; height:36px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:800; font-size:14px; font-family:'JetBrains Mono',monospace;
+  flex-shrink:0;
+}
+.av-d { background:rgba(239,68,68,0.15); color:var(--red); }
+.av-o { background:rgba(245,158,11,0.15); color:var(--amber); }
+.av-c { background:rgba(16,185,129,0.15); color:var(--green); }
+.av-e { background:rgba(79,70,229,0.15); color:var(--indigo); }
+.member-info { flex:1; }
+.member-name { font-size:14px; font-weight:600; }
+.member-type { font-size:11px; color:var(--text2); margin-top:1px; }
+.member-del { color:var(--text3); font-size:18px; cursor:pointer; padding:4px; }
+
+/* 밸런스 바 */
+.balance-bar-wrap { margin-bottom:10px; }
+.balance-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.balance-type { font-size:12px; font-weight:700; font-family:'JetBrains Mono',monospace; width:20px; }
+.balance-track { flex:1; height:8px; background:var(--surface3); border-radius:4px; overflow:hidden; }
+.balance-fill { height:100%; border-radius:4px; transition:width 0.5s ease; }
+.balance-count { font-size:12px; color:var(--text2); width:20px; text-align:right; font-family:'JetBrains Mono',monospace; }
+.risk-banner {
+  background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3);
+  border-radius:10px; padding:10px 14px; font-size:12px; color:#fcd34d;
+  display:none; margin-top:10px;
+}
+.risk-banner.show { display:flex; align-items:center; gap:8px; }
+
+/* 테스트 단계 */
+.test-step { display:none; }
+.test-step.active { display:block; }
+.step-header { display:flex; align-items:center; gap:8px; margin-bottom:16px; }
+.step-back { background:none; border:none; color:var(--text2); font-size:20px; cursor:pointer; padding:4px; }
+.step-title { font-size:16px; font-weight:700; flex:1; }
+.step-progress { font-size:12px; color:var(--text3); font-family:'JetBrains Mono',monospace; }
+
+/* ══════════════════════════════
+   탭2: AI 중재자
+══════════════════════════════ */
+.preset-list { display:flex; flex-direction:column; gap:8px; margin-bottom:4px; }
+.preset-btn {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:12px; padding:12px 14px; cursor:pointer;
+  text-align:left; transition:all 0.2s; font-family:inherit;
+}
+.preset-btn:active { border-color:var(--lavender); }
+.preset-tag { font-size:10px; color:var(--lavender); font-weight:700; letter-spacing:0.5px; margin-bottom:4px; }
+.preset-text { font-size:13px; color:var(--text); line-height:1.5; }
+
+.mediator-input {
+  width:100%; background:var(--surface2); border:1px solid var(--border);
+  border-radius:12px; padding:14px; color:var(--text);
+  font-family:inherit; font-size:13px; resize:none; outline:none;
+  min-height:100px; transition:border-color 0.2s; line-height:1.6;
+}
+.mediator-input:focus { border-color:var(--lavender); }
+.mediator-input::placeholder { color:var(--text3); }
+
+.btn-row { display:flex; gap:8px; margin-top:10px; }
+
+/* 갈등 지수 게이지 */
+.gauge-wrap { display:flex; flex-direction:column; align-items:center; padding:10px 0; }
+.gauge-svg { width:160px; height:90px; }
+.gauge-value { font-size:32px; font-weight:800; font-family:'JetBrains Mono',monospace; margin-top:-4px; }
+.gauge-label { font-size:12px; color:var(--text2); margin-top:4px; }
+
+/* 분석 결과 말풍선 */
+.bubble-wrap { display:flex; flex-direction:column; gap:12px; }
+.bubble {
+  border-radius:16px; padding:14px 16px; font-size:13px; line-height:1.7;
+  position:relative; animation:bubbleIn 0.4s ease;
+}
+@keyframes bubbleIn { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+.bubble-ai {
+  background:linear-gradient(135deg, rgba(79,70,229,0.15), rgba(124,58,237,0.1));
+  border:1px solid rgba(124,58,237,0.25); border-radius:16px 16px 16px 4px;
+}
+.bubble-cop {
+  background:linear-gradient(135deg, rgba(239,68,68,0.1), rgba(245,158,11,0.08));
+  border:1px solid rgba(239,68,68,0.2); border-radius:16px 16px 4px 16px;
+}
+.bubble-tag { font-size:10px; font-weight:700; letter-spacing:0.5px; margin-bottom:6px; }
+.bubble-ai .bubble-tag { color:var(--lavender); }
+.bubble-cop .bubble-tag { color:#fca5a5; }
+
+/* 음성 인식 영역 */
+.voice-area {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:12px; padding:14px; min-height:80px;
+  font-size:13px; line-height:1.7; color:var(--text);
+  margin-bottom:10px; position:relative;
+}
+.voice-placeholder { color:var(--text3); }
+.rec-indicator {
+  display:none; align-items:center; gap:6px;
+  font-size:11px; color:var(--red); font-weight:600;
+  position:absolute; top:10px; right:12px;
+}
+.rec-indicator.show { display:flex; }
+.rec-dot2 { width:6px; height:6px; border-radius:50%; background:var(--red); animation:blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+.waveform2 { display:none; align-items:center; gap:3px; height:24px; }
+.waveform2.show { display:flex; }
+.wbar { width:3px; border-radius:2px; background:linear-gradient(to top,var(--indigo),var(--lavender)); animation:wav 0.7s ease-in-out infinite; }
+.wbar:nth-child(1){animation-delay:0s}
+.wbar:nth-child(2){animation-delay:0.1s}
+.wbar:nth-child(3){animation-delay:0.2s}
+.wbar:nth-child(4){animation-delay:0.3s}
+.wbar:nth-child(5){animation-delay:0.2s}
+.wbar:nth-child(6){animation-delay:0.1s}
+@keyframes wav { 0%,100%{height:4px} 50%{height:20px} }
+
+/* 마이크 버튼 */
+.mic-fab {
+  width:56px; height:56px; border-radius:50%; border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:22px;
+  transition:all 0.2s; margin:0 auto; display:block;
+}
+.mic-fab.idle { background:linear-gradient(135deg,var(--purple),var(--indigo)); box-shadow:0 4px 16px rgba(124,58,237,0.4); }
+.mic-fab.recording { background:linear-gradient(135deg,var(--red),#f97316); box-shadow:0 4px 16px rgba(239,68,68,0.4); animation:pulseBtn 2s infinite; }
+@keyframes pulseBtn { 0%,100%{box-shadow:0 4px 16px rgba(239,68,68,0.4),0 0 0 0 rgba(239,68,68,0.3)} 50%{box-shadow:0 4px 16px rgba(239,68,68,0.4),0 0 0 10px rgba(239,68,68,0)} }
+.mic-fab:active { transform:scale(0.94); }
+.mic-label-center { text-align:center; font-size:11px; color:var(--text3); margin-top:6px; }
+
+/* ══════════════════════════════
+   탭3: Vicy 돌려말하기
+══════════════════════════════ */
+.anger-presets { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.anger-chip {
+  background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25);
+  border-radius:20px; padding:7px 14px; font-size:12px; font-weight:600;
+  color:#fca5a5; cursor:pointer; transition:all 0.2s; font-family:inherit;
+}
+.anger-chip:active { background:rgba(239,68,68,0.2); }
+.mode-toggle { display:flex; gap:6px; margin-bottom:14px; }
+.mode-btn {
+  flex:1; padding:10px; border-radius:10px; border:1px solid var(--border);
+  background:var(--surface2); color:var(--text2); font-size:12px; font-weight:600;
+  cursor:pointer; font-family:inherit; text-align:center; transition:all 0.2s;
+}
+.mode-btn.active { border-color:var(--lavender); color:var(--lavender); background:rgba(167,139,250,0.08); }
+.result-bubble {
+  background:var(--surface2); border:1px solid var(--border2);
+  border-radius:12px; padding:16px; font-size:14px; line-height:1.8;
+  color:var(--text); min-height:80px; margin-top:12px; display:none;
+  animation:fadeIn 0.3s ease;
+}
+.result-bubble.show { display:block; }
+.copy-btn {
+  margin-top:10px; width:100%; background:var(--surface2);
+  border:1px solid var(--border2); border-radius:10px; padding:10px;
+  color:var(--text2); font-size:13px; font-weight:600; cursor:pointer;
+  font-family:inherit; transition:all 0.2s; display:none;
+}
+.copy-btn.show { display:block; }
+.copy-btn:active { background:var(--surface3); }
+
+/* ══════════════════════════════
+   탭4: 프레임 브레이커
+══════════════════════════════ */
+.frame-cards { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+.frame-card {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:14px; padding:16px; cursor:pointer;
+  transition:all 0.25s; text-align:center;
+  position:relative; overflow:hidden;
+}
+.frame-card::before {
+  content:''; position:absolute; inset:0; opacity:0;
+  transition:opacity 0.3s;
+  background:linear-gradient(135deg, rgba(124,58,237,0.1), rgba(79,70,229,0.05));
+}
+.frame-card:active::before { opacity:1; }
+.frame-card:active { border-color:var(--lavender); transform:scale(0.97); }
+.frame-emoji { font-size:28px; margin-bottom:8px; display:block; }
+.frame-q { font-size:12px; font-weight:600; color:var(--text); line-height:1.5; }
+.frame-result {
+  background:linear-gradient(135deg, rgba(79,70,229,0.12), rgba(124,58,237,0.08));
+  border:1px solid rgba(124,58,237,0.2); border-radius:14px;
+  padding:16px; font-size:13px; line-height:1.8; color:var(--text);
+  display:none; margin-bottom:14px; animation:fadeIn 0.3s ease;
+}
+.frame-result.show { display:block; }
+
+/* 합의록 */
+.decision-input-row { display:flex; gap:8px; margin-bottom:12px; }
+.decision-list { display:flex; flex-direction:column; gap:8px; }
+.decision-item {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:12px; padding:12px 14px;
+  display:flex; align-items:flex-start; gap:10px;
+}
+.decision-time {
+  font-size:10px; color:var(--text3); font-family:'JetBrains Mono',monospace;
+  white-space:nowrap; margin-top:2px; flex-shrink:0;
+}
+.decision-text { font-size:13px; line-height:1.5; flex:1; }
+.decision-del { color:var(--text3); font-size:16px; cursor:pointer; flex-shrink:0; }
+
+/* API 모달 */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.7);
+  z-index:100; display:none; align-items:flex-end;
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.show { display:flex; }
+.modal {
+  width:100%; background:var(--surface);
+  border-radius:20px 20px 0 0; padding:24px 20px 36px;
+  border-top:1px solid var(--border2);
+  animation:slideUp 0.3s ease;
+}
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.modal-title { font-size:17px; font-weight:700; margin-bottom:6px; }
+.modal-desc { font-size:13px; color:var(--text2); margin-bottom:16px; line-height:1.5; }
+.modal-input-row { display:flex; gap:8px; }
+.modal-inp {
+  flex:1; background:var(--surface2); border:1px solid var(--border);
+  border-radius:10px; padding:12px 14px; color:var(--text);
+  font-family:'JetBrains Mono',monospace; font-size:13px; outline:none;
+  transition:border-color 0.2s;
+}
+.modal-inp:focus { border-color:var(--lavender); }
+.modal-inp::placeholder { color:var(--text3); opacity:0.6; }
+.modal-close { position:absolute; top:16px; right:20px; background:none; border:none; color:var(--text2); font-size:22px; cursor:pointer; }
+
+/* 로딩 */
+.loading { display:inline-flex; gap:4px; align-items:center; }
+.loading span { width:5px; height:5px; border-radius:50%; background:var(--lavender); animation:ldot 1.2s infinite; }
+.loading span:nth-child(2){animation-delay:0.2s}
+.loading span:nth-child(3){animation-delay:0.4s}
+@keyframes ldot { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1)} }
+
+/* 토스트 */
+.toast {
+  position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--surface3); border:1px solid var(--border2);
+  border-radius:20px; padding:10px 20px; font-size:13px; font-weight:600;
+  z-index:200; opacity:0; transition:all 0.3s; white-space:nowrap;
+  pointer-events:none;
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* 섹션 제목 */
+.section-title { font-size:14px; font-weight:700; margin-bottom:10px; color:var(--text); }
+.section-sub { font-size:12px; color:var(--text2); margin-bottom:12px; line-height:1.5; }
+.divider { height:1px; background:var(--border); margin:16px 0; }
+</style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+</div>
+
+<div class="app">
+  <!-- 탑바 -->
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-name">Sync<span>Pulse</span></div>
+    </div>
+    <button class="api-btn" id="apiBtn" onclick="openApiModal()">🔑 API 설정</button>
+  </div>
+
+  <!-- 탭 -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(0)"><span>📊</span>CODE 얼라인</div>
+    <div class="tab" onclick="switchTab(1)"><span>🤖</span>AI 중재자</div>
+    <div class="tab" onclick="switchTab(2)"><span>💌</span>Vicy</div>
+    <div class="tab" onclick="switchTab(3)"><span>🃏</span>프레임</div>
+  </div>
+
+  <!-- 콘텐츠 -->
+  <div class="content">
+
+    <!-- ══ 탭1: CODE 얼라인먼트 ══ -->
+    <div class="screen active" id="screen0">
+
+      <!-- 단계1: 타입 선택 -->
+      <div class="test-step active" id="step1">
+        <div class="card">
+          <div class="card-title"><div class="dot" style="background:var(--lavender)"></div>CODE 성향 프레임워크</div>
+          <div class="section-sub">우리 팀 성향을 분석해서 협업 균형을 맞춰요. 나의 유형을 선택해보세요.</div>
+          <div class="code-types">
+            <div class="code-type-card code-d" onclick="selectType('D')">
+              <div class="code-letter">D</div>
+              <div class="code-name">Disruptor</div>
+              <div class="code-desc">파괴적 실행가<br>빠른 결정, 도전적</div>
+            </div>
+            <div class="code-type-card code-o" onclick="selectType('O')">
+              <div class="code-letter">O</div>
+              <div class="code-name">Outreacher</div>
+              <div class="code-desc">비전 안내자<br>관계 중심, 설득력</div>
+            </div>
+            <div class="code-type-card code-c" onclick="selectType('C')">
+              <div class="code-letter">C</div>
+              <div class="code-name">Coordinator</div>
+              <div class="code-desc">투명한 조율자<br>균형, 중재 능력</div>
+            </div>
+            <div class="code-type-card code-e" onclick="selectType('E')">
+              <div class="code-letter">E</div>
+              <div class="code-name">Evaluator</div>
+              <div class="code-desc">시스템 설계자<br>분석적, 체계적</div>
+            </div>
+          </div>
+          <button class="btn-primary" style="width:100%" onclick="goToTest()">🧪 20문항 CODE 성향 진단</button>
+        </div>
+
+        <div class="card" id="teamCard">
+          <div class="card-title"><div class="dot" style="background:var(--cyan)"></div>팀 멤버 등록</div>
+          <div class="member-input-row">
+            <input type="text" class="inp" id="memberName" placeholder="이름" maxlength="8">
+            <button class="btn-primary" onclick="addMember()">추가</button>
+          </div>
+          <div class="member-list" id="memberList">
+            <div style="color:var(--text3);font-size:13px;text-align:center;padding:12px">아직 등록된 멤버가 없어요</div>
+          </div>
+        </div>
+
+        <div class="card" id="balanceCard" style="display:none">
+          <div class="card-title"><div class="dot" style="background:var(--green)"></div>팀 성향 밸런스</div>
+          <div class="balance-bar-wrap" id="balanceBars"></div>
+          <div class="risk-banner" id="riskBanner">⚠️ <span id="riskText"></span></div>
+        </div>
+      </div>
+
+      <!-- 단계2: 진단 테스트 -->
+      <div class="test-step" id="step2">
+        <div class="card">
+          <div class="step-header">
+            <button class="step-back" onclick="backToStep1()">←</button>
+            <div class="step-title">자가 진단 테스트</div>
+            <div class="step-progress" id="stepProgress">1/20</div>
+          </div>
+          <div id="quizContainer"></div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn-secondary" style="flex:1" onclick="prevQ()">이전</button>
+            <button class="btn-primary" style="flex:2" onclick="nextQ()">다음</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ 탭2: AI 중재자 ══ -->
+    <div class="screen" id="screen1">
+
+      <div class="card">
+        <div class="card-title"><div class="dot" style="background:var(--red)"></div>🎙️ 실시간 음성 인식</div>
+        <div class="voice-area" id="voiceArea">
+          <span class="voice-placeholder" id="voicePlaceholder">마이크 버튼을 눌러 회의 내용을 말씀해 주세요...</span>
+          <span id="voiceText" style="display:none"></span>
+          <div class="rec-indicator" id="recIndicator">
+            <div class="rec-dot2"></div>REC
+          </div>
+        </div>
+        <div class="waveform2" id="waveform2" style="margin-bottom:10px;justify-content:center">
+          <div class="wbar" style="height:4px"></div>
+          <div class="wbar" style="height:8px"></div>
+          <div class="wbar" style="height:14px"></div>
+          <div class="wbar" style="height:18px"></div>
+          <div class="wbar" style="height:14px"></div>
+          <div class="wbar" style="height:8px"></div>
+        </div>
+        <button class="mic-fab idle" id="micFab" onclick="toggleMic()">🎙️</button>
+        <div class="mic-label-center" id="micLabel">녹음 시작</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><div class="dot" style="background:var(--amber)"></div>갈등 시나리오 프리셋</div>
+        <div class="preset-list">
+          <button class="preset-btn" onclick="loadPreset(0)">
+            <div class="preset-tag">주제 방황형</div>
+            <div class="preset-text">우리 앱 이름을 뭐로 할까? 아 근데 기능도 아직 안정했잖아. 그보다 마케팅을 먼저 생각해야 하지 않을까?</div>
+          </button>
+          <button class="preset-btn" onclick="loadPreset(1)">
+            <div class="preset-tag">템포 갈등형</div>
+            <div class="preset-text">나는 이번 주에 무조건 MVP 완성해야 한다고 생각해. 근데 왜 자꾸 회의만 하고 실행을 안 해? 이러다 또 기회 놓치는 거 아냐?</div>
+          </button>
+          <button class="preset-btn" onclick="loadPreset(2)">
+            <div class="preset-tag">무한 발산형</div>
+            <div class="preset-text">AI 기능 넣고 싶어! 아 구독 서비스도 좋겠다. 오 게임화 요소도 넣자! 블록체인은 어때? 다 넣으면 완벽할 것 같은데?</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><div class="dot" style="background:var(--purple)"></div>직접 입력 분석</div>
+        <textarea class="mediator-input" id="mediatorInput" placeholder="회의 내용을 직접 입력하거나 위 프리셋을 클릭하세요..."></textarea>
+        <div class="btn-row">
+          <button class="btn-primary" style="flex:2" onclick="analyzeConflict()">⚡ AI 분석</button>
+          <button class="btn-secondary" style="flex:1" onclick="clearAnalysis()">초기화</button>
+        </div>
+      </div>
+
+      <div class="card" id="analysisResult" style="display:none">
+        <div class="card-title"><div class="dot" style="background:var(--indigo)"></div>분석 결과</div>
+        <div class="gauge-wrap" id="gaugeWrap"></div>
+        <div class="divider"></div>
+        <div class="bubble-wrap" id="bubbleWrap"></div>
+      </div>
+
+    </div>
+
+    <!-- ══ 탭3: Vicy 돌려말하기 ══ -->
+    <div class="screen" id="screen2">
+      <div class="card">
+        <div class="card-title"><div class="dot" style="background:var(--pink)"></div>💌 Vicy 돌려말하기 비서</div>
+        <div class="section-sub">속에 있는 날 것의 말을 골라주세요 👇</div>
+        <div class="anger-presets">
+          <button class="anger-chip" onclick="setAnger('너 왜 단톡방 읽씹하냐')">읽씹 짜증</button>
+          <button class="anger-chip" onclick="setAnger('왜 과제를 맨날 늦게 내냐')">과제 지각</button>
+          <button class="anger-chip" onclick="setAnger('회의 때 왜 맨날 딴짓하냐')">회의 태도</button>
+          <button class="anger-chip" onclick="setAnger('결정을 왜 혼자 다 바꾸냐')">독단 결정</button>
+          <button class="anger-chip" onclick="setAnger('왜 항상 의견만 내고 실행은 안 하냐')">말만 행동</button>
+        </div>
+        <textarea class="mediator-input" id="vicyInput" placeholder="또는 직접 입력해보세요..." style="min-height:70px"></textarea>
+        <div class="divider"></div>
+        <div class="section-title" style="font-size:13px">변환 스타일 선택</div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="modeGrandma" onclick="setMode('grandma')">👵 할머니 손맛</button>
+          <button class="mode-btn" id="modeBiz" onclick="setMode('biz')">👔 비즈니스체</button>
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="transformVicy()">✨ 변환하기</button>
+        <div class="result-bubble" id="vicyResult"></div>
+        <button class="copy-btn" id="vicyCopyBtn" onclick="copyVicy()">📋 카카오톡에 복사하기</button>
+      </div>
+    </div>
+
+    <!-- ══ 탭4: 프레임 브레이커 ══ -->
+    <div class="screen" id="screen3">
+      <div class="card">
+        <div class="card-title"><div class="dot" style="background:var(--amber)"></div>🃏 만약에? 극단제약 카드</div>
+        <div class="section-sub">카드를 눌러 극한 상황을 설정하고 AI의 행동 가이드를 받아보세요</div>
+        <div class="frame-result" id="frameResult"></div>
+        <div class="frame-cards">
+          <div class="frame-card" onclick="flipFrame(0)">
+            <span class="frame-emoji">💸</span>
+            <div class="frame-q">예산이 0원이라면?</div>
+          </div>
+          <div class="frame-card" onclick="flipFrame(1)">
+            <span class="frame-emoji">⏰</span>
+            <div class="frame-q">내일 당장 데모해야 한다면?</div>
+          </div>
+          <div class="frame-card" onclick="flipFrame(2)">
+            <span class="frame-emoji">👤</span>
+            <div class="frame-q">팀원 1명만 남는다면?</div>
+          </div>
+          <div class="frame-card" onclick="flipFrame(3)">
+            <span class="frame-emoji">🌍</span>
+            <div class="frame-q">경쟁자가 먼저 출시했다면?</div>
+          </div>
+          <div class="frame-card" onclick="flipFrame(4)">
+            <span class="frame-emoji">📵</span>
+            <div class="frame-q">인터넷 없이 만들어야 한다면?</div>
+          </div>
+          <div class="frame-card" onclick="flipFrame(5)">
+            <span class="frame-emoji">🏆</span>
+            <div class="frame-q">내일 투자자 앞에서 발표한다면?</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><div class="dot" style="background:var(--green)"></div>🔒 의사결정 합의록</div>
+        <div class="section-sub">수렴된 결정을 박제해서 프로젝트 표류를 방지해요</div>
+        <div class="decision-input-row">
+          <input type="text" class="inp" id="decisionInput" placeholder="합의된 결정 사항 입력...">
+          <button class="btn-primary" onclick="addDecision()">박제</button>
+        </div>
+        <div class="decision-list" id="decisionList">
+          <div style="color:var(--text3);font-size:13px;text-align:center;padding:8px">아직 박제된 결정이 없어요</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- API 모달 -->
+<div class="modal-overlay" id="apiModal" onclick="closeApiModalOutside(event)">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="closeApiModal()">×</button>
+    <div class="modal-title">🔑 Gemini API 설정</div>
+    <div class="modal-desc">Google AI Studio에서 발급받은 API 키를 입력해주세요.<br>AI 분석 기능에 사용됩니다.</div>
+    <div class="modal-input-row">
+      <input type="password" class="modal-inp" id="apiKeyInput" placeholder="API 키 입력...">
+      <button class="btn-primary" onclick="saveApiKey()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 토스트 -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── 전역 상태 ──
+let apiKey = localStorage.getItem('gemini_api_key') || '';
+let currentTab = 0;
+let selectedType = null;
+let members = JSON.parse(localStorage.getItem('sp_members') || '[]');
+let decisions = JSON.parse(localStorage.getItem('sp_decisions') || '[]');
+let currentQ = 0;
+let quizAnswers = Array(20).fill(2);
+let isRecording = false;
+let recognition = null;
+let voiceTranscript = '';
+let vicyMode = 'grandma';
+let frameLoading = false;
+
+// API 키 저장 시 버튼 상태 업데이트
+if (apiKey) document.getElementById('apiBtn').classList.add('saved');
+
+// ── 탭 전환 ──
+function switchTab(i) {
+  document.querySelectorAll('.tab').forEach((t,idx) => t.classList.toggle('active', idx===i));
+  document.querySelectorAll('.screen').forEach((s,idx) => s.classList.toggle('active', idx===i));
+  currentTab = i;
+}
+
+// ── 토스트 ──
+function showToast(msg, duration=2000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ── API 모달 ──
+function openApiModal() {
+  document.getElementById('apiModal').classList.add('show');
+  if (apiKey) document.getElementById('apiKeyInput').value = apiKey;
+}
+function closeApiModal() { document.getElementById('apiModal').classList.remove('show'); }
+function closeApiModalOutside(e) { if(e.target===document.getElementById('apiModal')) closeApiModal(); }
+function saveApiKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (!val) { showToast('API 키를 입력해주세요'); return; }
+  apiKey = val;
+  localStorage.setItem('gemini_api_key', val);
+  document.getElementById('apiBtn').classList.add('saved');
+  document.getElementById('apiBtn').textContent = '✅ API 연결됨';
+  closeApiModal();
+  showToast('✅ API 키가 저장되었습니다');
+}
+
+// ── Gemini API 호출 ──
+async function callGemini(prompt) {
+  if (!apiKey) { openApiModal(); throw new Error('API 키 없음'); }
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const res = await fetch(url, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ contents:[{ parts:[{text:prompt}] }] })
+  });
+  if (!res.ok) throw new Error(`API 오류 ${res.status}`);
+  const data = await res.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '응답 없음';
+}
+
+// ══════════════════════════════
+// 탭1: CODE 얼라인먼트
+// ══════════════════════════════
+const CODE_INFO = {
+  D: { name:'Disruptor', color:'var(--red)', fill:'#ef4444' },
+  O: { name:'Outreacher', color:'var(--amber)', fill:'#f59e0b' },
+  C: { name:'Coordinator', color:'var(--green)', fill:'#10b981' },
+  E: { name:'Evaluator', color:'var(--indigo)', fill:'#4f46e5' },
+};
+
+function selectType(type) {
+  selectedType = type;
+  document.querySelectorAll('.code-type-card').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`.code-${type.toLowerCase()}`).classList.add('selected');
+  showToast(`${CODE_INFO[type].name} 유형 선택됨`);
+}
+
+// 20문항 CODE 진단 (문서 명세 그대로)
+const QUIZ = [
+  // D 문항 1~5
+  { type:'D', q:"완벽한 기획안을 완성하기보다, 핵심만 담은 MVP를 빠르게 내놓고 반응을 보며 수정한다." },
+  { type:'D', q:"기존 관행이 비효율적이라고 판단되면, 마찰을 감수하더라도 새로운 방식을 강하게 추진한다." },
+  { type:'D', q:"데이터 끼워 맞추기식 논리보다, 기존의 판을 엎는 파괴적인 아이디어 실행을 선호한다." },
+  { type:'D', q:"팀 내 의견이 교착 상태에 빠졌을 때, 총대를 메고 과감하게 결단을 내리는 역할을 주로 맡는다." },
+  { type:'D', q:"목표 달성을 위해서라면 다소 리스크가 있더라도 공격적인 일정과 타겟을 설정한다." },
+  // O 문항 6~10
+  { type:'O', q:"새 프로젝트를 시작할 때, '무엇'을 하는지보다 '왜' 이 일을 해야 하는지 비전을 먼저 설득한다." },
+  { type:'O', q:"외부 파트너, 멘토 등 다양한 사람들과 대인관계를 구축하고 기회를 가져오는 데 능숙하다." },
+  { type:'O', q:"팀의 사기가 떨어졌을 때, 사람들의 감정을 빠르게 캐치하여 분위기를 환기시키고 동기를 부여한다." },
+  { type:'O', q:"우리 팀의 아이디어를 매력적인 스토리로 포장하여 타인에게 어필하고 마음을 움직이는 데 자신 있다." },
+  { type:'O', q:"업무 성과만큼이나 팀원들 간의 긍정적인 관계 형성과 에너지 교류가 중요하다고 생각한다." },
+  // C 문항 11~15
+  { type:'C', q:"리더 한 명이 독단적으로 통제하기보다, 모든 정보가 투명하게 공유되고 협력하는 소통 환경이 필수적이다." },
+  { type:'C', q:"직접 세세한 지시를 내리기보다, 팀원들이 스스로 역량을 발휘할 수 있도록 돕는 '방향키' 역할에 집중한다." },
+  { type:'C', q:"팀원 중 누군가 뒤처지지 않도록 전체 진행 상황을 파악하고 안정적으로 업무 밸런스를 조율한다." },
+  { type:'C', q:"의사결정 시 통보하기보다, 합의를 거치는 과정을 통해 팀의 심리적 안정감을 구축하고 지원한다." },
+  { type:'C', q:"갈등이 발생했을 때, 잘잘못을 따지기보다 서로의 입장 차이를 객관적으로 듣고 타협점을 찾아낸다." },
+  // E 문항 16~20
+  { type:'E', q:"단기 성과보다 비즈니스 전체를 조망하며 매크로(Macro)적 관점에서 거시적 리스크를 분석한다." },
+  { type:'E', q:"새로운 툴이나 제도를 도입할 때, 직관보다는 객관적 근거와 예상되는 기회비용을 철저히 계산한다." },
+  { type:'E', q:"팀이 낙관적인 전망에 치우쳐 있을 때, 최악의 시나리오를 가정하고 대안(플랜 B)을 마련해 둔다." },
+  { type:'E', q:"업무 프로세스에서 비효율적이거나 허점이 날 수 있는 논리적 오류를 찾아내어 안정적인 구조를 설계한다." },
+  { type:'E', q:"표면적 분석을 넘어, 시스템 내부에 잠재된 본질적이고 구조적인 문제를 파고들어 논리적으로 검증한다." },
+];
+
+// 4점 척도 라벨
+const SCALE_LABELS = ['매우 그렇지 않다', '그렇지 않다', '그렇다', '매우 그렇다'];
+
+// 12가지 세부 유형
+const TWO_LETTER = {
+  DD:{ name:'파괴형 실행가', desc:'누구보다 빠르게 실행하고, 마찰을 뚫고 결과를 만들어냅니다.' },
+  DO:{ name:'선봉형 실행가', desc:'실행력과 설득력을 겸비하여 팀을 앞장서 이끕니다.' },
+  DE:{ name:'전술형 실행가', desc:'데이터 기반으로 실행 전략을 설계하고 돌파합니다.' },
+  OO:{ name:'비전형 안내자', desc:'팀의 방향성과 에너지를 만들어내는 핵심 동력입니다.' },
+  OD:{ name:'촉진형 안내자', desc:'비전을 세우고 즉시 실행으로 연결하는 추진자입니다.' },
+  OC:{ name:'외교형 안내자', desc:'관계와 협력을 통해 팀 시너지를 극대화합니다.' },
+  CC:{ name:'중심형 조율자', desc:'팀의 균형과 안정감을 책임지는 든든한 중심입니다.' },
+  CO:{ name:'허브형 조율자', desc:'사람과 사람을 연결하여 협업 네트워크를 완성합니다.' },
+  CE:{ name:'수호형 조율자', desc:'팀의 프로세스를 지키며 리스크로부터 방어합니다.' },
+  EE:{ name:'구조형 설계자', desc:'시스템 전체를 설계하고 논리적 허점을 제거합니다.' },
+  ED:{ name:'효율형 설계자', desc:'분석력과 실행력으로 최적의 구조를 구현합니다.' },
+  EC:{ name:'검증형 설계자', desc:'데이터와 협력으로 안전하고 검증된 결론을 도출합니다.' },
+};
+
+function goToTest() {
+  document.getElementById('step1').classList.remove('active');
+  document.getElementById('step2').classList.add('active');
+  currentQ = 0;
+  quizAnswers = Array(20).fill(2);
+  renderQuiz();
+}
+function backToStep1() {
+  document.getElementById('step2').classList.remove('active');
+  document.getElementById('step1').classList.add('active');
+}
+
+function renderQuiz() {
+  document.getElementById('stepProgress').textContent = `${currentQ+1}/20`;
+  const q = QUIZ[currentQ];
+  const typeColor = { D:'var(--red)', O:'var(--amber)', C:'var(--green)', E:'var(--indigo)' }[q.type];
+  const val = quizAnswers[currentQ];
+  document.getElementById('quizContainer').innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <div style="background:${typeColor};opacity:0.15;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:800;color:${typeColor};font-family:'JetBrains Mono',monospace;opacity:1;background:rgba(255,255,255,0.06)">${q.type}</div>
+      <div style="flex:1;height:3px;background:var(--surface3);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${(currentQ+1)/20*100}%;background:${typeColor};border-radius:2px;transition:width 0.3s"></div>
+      </div>
+    </div>
+    <div class="q-item">
+      <div class="q-text" style="font-size:14px;line-height:1.7;margin-bottom:18px">${q.q}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        ${[1,2,3,4].map(v => `
+          <button onclick="selectAnswer(${v})" style="
+            padding:10px 4px; border-radius:10px; border:2px solid ${val===v ? typeColor : 'var(--border)'};
+            background:${val===v ? 'rgba(255,255,255,0.06)' : 'var(--surface2)'};
+            color:${val===v ? 'white' : 'var(--text2)'}; font-size:11px; font-weight:${val===v?'700':'400'};
+            cursor:pointer; font-family:inherit; line-height:1.4; transition:all 0.15s;
+            box-shadow:${val===v ? '0 0 12px '+typeColor+'44' : 'none'}
+          ">${SCALE_LABELS[v-1]}</button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function selectAnswer(v) {
+  quizAnswers[currentQ] = v;
+  renderQuiz();
+}
+
+function updateSliderBg(el) {
+  const pct = ((el.value - 1) / 3) * 100;
+  el.style.background = `linear-gradient(to right, var(--lavender) ${pct}%, var(--surface3) ${pct}%)`;
+}
+
+function prevQ() { if(currentQ>0){currentQ--;renderQuiz();} }
+function nextQ() {
+  if (quizAnswers[currentQ] === 2 && !confirm('아직 선택 안 하셨어요. 계속 진행할까요?')) return;
+  if (currentQ < 19) { currentQ++; renderQuiz(); }
+  else { calcResult(); }
+}
+
+function calcResult() {
+  // 각 유형별 점수 합산 (5문항 × 최대 4점 = 최대 20점)
+  const scores = { D:0, O:0, C:0, E:0 };
+  QUIZ.forEach((q, i) => { scores[q.type] += quizAnswers[i]; });
+
+  // 주 성향 + 부 성향
+  const sorted = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const main = sorted[0][0];
+  const sub = sorted[1][0];
+
+  // 2-Letter Code 결정
+  const twoLetter = (main === sub) ? main+main : main+sub;
+  const typeInfo = TWO_LETTER[twoLetter] || TWO_LETTER[main+main];
+
+  selectedType = main;
+  backToStep1();
+  document.querySelectorAll('.code-type-card').forEach(c=>c.classList.remove('selected'));
+  document.querySelector(`.code-${main.toLowerCase()}`).classList.add('selected');
+
+  // 결과 카드 표시
+  const balanceCard = document.getElementById('balanceCard');
+  balanceCard.style.display = 'block';
+  const resultHtml = `
+    <div style="background:linear-gradient(135deg,rgba(167,139,250,0.08),rgba(79,70,229,0.06));border:1px solid var(--border2);border-radius:14px;padding:16px;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:8px">나의 CODE 유형</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <div style="font-size:36px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--lavender)">${twoLetter}</div>
+        <div>
+          <div style="font-size:16px;font-weight:700">${typeInfo.name}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:3px">${typeInfo.desc}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px">
+        ${sorted.slice(0,4).map(([t,s])=>`
+          <div style="flex:1;text-align:center">
+            <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">${t}</div>
+            <div style="font-size:13px;font-weight:700;color:${{'D':'var(--red)','O':'var(--amber)','C':'var(--green)','E':'var(--indigo)'}[t]}">${s}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('balanceBars').insertAdjacentHTML('beforebegin', resultHtml);
+  showToast(`${twoLetter} · ${typeInfo.name}!`, 3500);
+}
+
+function addMember() {
+  const name = document.getElementById('memberName').value.trim();
+  if (!name) { showToast('이름을 입력해주세요'); return; }
+  if (!selectedType) { showToast('먼저 유형을 선택해주세요'); return; }
+  members.push({ name, type: selectedType });
+  localStorage.setItem('sp_members', JSON.stringify(members));
+  document.getElementById('memberName').value = '';
+  renderMembers();
+  renderBalance();
+}
+
+function removeMember(i) {
+  members.splice(i,1);
+  localStorage.setItem('sp_members', JSON.stringify(members));
+  renderMembers();
+  renderBalance();
+}
+
+function renderMembers() {
+  const list = document.getElementById('memberList');
+  if (!members.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:12px">아직 등록된 멤버가 없어요</div>';
+    return;
+  }
+  list.innerHTML = members.map((m,i) => `
+    <div class="member-item">
+      <div class="member-avatar av-${m.type.toLowerCase()}">${m.type}</div>
+      <div class="member-info">
+        <div class="member-name">${m.name}</div>
+        <div class="member-type">${CODE_INFO[m.type].name}</div>
+      </div>
+      <div class="member-del" onclick="removeMember(${i})">×</div>
+    </div>
+  `).join('');
+}
+
+function renderBalance() {
+  if (!members.length) { document.getElementById('balanceCard').style.display='none'; return; }
+  document.getElementById('balanceCard').style.display='block';
+  const counts = {D:0,O:0,C:0,E:0};
+  members.forEach(m => counts[m.type]++);
+  const total = members.length;
+  const bars = document.getElementById('balanceBars');
+  bars.innerHTML = ['D','O','C','E'].map(t => `
+    <div class="balance-row">
+      <div class="balance-type" style="color:${CODE_INFO[t].fill}">${t}</div>
+      <div class="balance-track">
+        <div class="balance-fill" style="width:${total?counts[t]/total*100:0}%;background:${CODE_INFO[t].fill}"></div>
+      </div>
+      <div class="balance-count">${counts[t]}</div>
+    </div>
+  `).join('');
+  const risk = document.getElementById('riskBanner');
+  if (counts.C === 0 || counts.E === 0) {
+    risk.classList.add('show');
+    let msg = '';
+    if (counts.C===0) msg += 'Coordinator(C) 없음 → 갈등 조율 위험 ';
+    if (counts.E===0) msg += 'Evaluator(E) 없음 → 검증 공백 위험';
+    document.getElementById('riskText').textContent = msg.trim();
+  } else {
+    risk.classList.remove('show');
+  }
+}
+
+// 초기 렌더
+renderMembers();
+renderBalance();
+
+// ══════════════════════════════
+// 탭2: AI 중재자
+// ══════════════════════════════
+const PRESETS = [
+  '우리 앱 이름을 뭐로 할까? 아 근데 기능도 아직 안정했잖아. 그보다 마케팅을 먼저 생각해야 하지 않을까? 타겟도 다시 봐야 할 것 같은데. 아 근데 로고는 어떻게 해?',
+  '나는 이번 주에 무조건 MVP 완성해야 한다고 생각해. 근데 왜 자꾸 회의만 하고 실행을 안 해? 이러다 또 기회 놓치는 거 아냐? 결정이 너무 느려.',
+  'AI 기능 넣고 싶어! 아 구독 서비스도 좋겠다. 오 게임화 요소도 넣자! 블록체인은 어때? 다 넣으면 완벽할 것 같은데? 어 근데 AR도?'
+];
+function loadPreset(i) {
+  document.getElementById('mediatorInput').value = PRESETS[i];
+}
+
+function toggleMic() {
+  if (!isRecording) startMic();
+  else stopMic();
+}
+
+function startMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('Chrome 브라우저에서만 지원돼요'); return; }
+  recognition = new SR();
+  recognition.lang = 'ko-KR';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  voiceTranscript = '';
+  recognition.onstart = () => {
+    isRecording = true;
+    document.getElementById('micFab').className = 'mic-fab recording';
+    document.getElementById('micFab').textContent = '⏹';
+    document.getElementById('micLabel').textContent = '녹음 중지';
+    document.getElementById('recIndicator').classList.add('show');
+    document.getElementById('waveform2').classList.add('show');
+    document.getElementById('voicePlaceholder').style.display='none';
+    document.getElementById('voiceText').style.display='block';
+  };
+  recognition.onresult = (e) => {
+    let interim='', final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const t=e.results[i][0].transcript;
+      if(e.results[i].isFinal) final+=t; else interim+=t;
+    }
+    if(final) voiceTranscript+=final+' ';
+    document.getElementById('voiceText').textContent = voiceTranscript + interim;
+  };
+  recognition.onerror = (e) => {
+    if(e.error==='not-allowed') showToast('마이크 권한을 허용해주세요');
+  };
+  recognition.onend = () => { if(isRecording) recognition.start(); };
+  recognition.start();
+}
+
+function stopMic() {
+  isRecording = false;
+  if(recognition){ recognition.onend=null; recognition.stop(); }
+  document.getElementById('micFab').className='mic-fab idle';
+  document.getElementById('micFab').textContent='🎙️';
+  document.getElementById('micLabel').textContent='녹음 시작';
+  document.getElementById('recIndicator').classList.remove('show');
+  document.getElementById('waveform2').classList.remove('show');
+  if(voiceTranscript.trim()){
+    document.getElementById('mediatorInput').value = voiceTranscript.trim();
+    showToast('음성이 텍스트로 변환됐어요!');
+  }
+}
+
+async function analyzeConflict() {
+  const text = document.getElementById('mediatorInput').value.trim();
+  if (!text) { showToast('분석할 내용을 입력해주세요'); return; }
+  const resultCard = document.getElementById('analysisResult');
+  resultCard.style.display='block';
+  document.getElementById('gaugeWrap').innerHTML = '<div class="loading"><span></span><span></span><span></span></div>';
+  document.getElementById('bubbleWrap').innerHTML = '';
+
+  const prompt = `너는 청소년 팀 회의 AI 중재 전문가야. 다음 회의 대화를 분석해서 JSON 형식으로만 답해줘. 다른 텍스트 없이 JSON만:
+{
+  "conflict_score": 0~100 사이 숫자,
+  "summary": "한 문장 요약",
+  "mediator_script": "청소년 화법으로 따뜻하지만 명확하게 중재하는 멘트 2~3문장",
+  "cop_feedback": "리더가 못한 쓴소리를 익명으로 짚어주는 멘트 1~2문장"
+}
+회의내용: "${text}"`;
+
+  try {
+    const raw = await callGemini(prompt);
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const data = JSON.parse(clean);
+    renderGauge(data.conflict_score);
+    renderBubbles(data);
+  } catch(e) {
+    // fallback 시뮬레이션
+    const score = Math.floor(Math.random()*40+30);
+    renderGauge(score);
+    renderBubbles({
+      conflict_score: score,
+      mediator_script: "지금 여러분의 에너지가 정말 느껴져요! 근데 잠깐, 각자 말하고 싶은 게 너무 많아서 서로 엇갈리고 있는 것 같아요. 오늘 회의에서 딱 하나만 결정하기로 해볼까요?",
+      cop_feedback: "솔직히 말할게요. 지금 결정된 게 하나도 없어요. 다음 회의 전에 각자 '이번 주 내가 할 일 1가지'를 문서로 공유해주세요."
+    });
+    if (apiKey) showToast('API 응답 파싱 오류 — 시뮬레이션 결과');
+  }
+}
+
+function renderGauge(score) {
+  const color = score < 30 ? '#10b981' : score < 60 ? '#f59e0b' : '#ef4444';
+  const label = score < 30 ? '평온' : score < 60 ? '주의 필요' : '긴장 고조';
+  const angle = (score / 100) * 180;
+  const rad = (angle - 90) * Math.PI / 180;
+  const x2 = 80 + 55 * Math.cos(rad);
+  const y2 = 80 + 55 * Math.sin(rad);
+  document.getElementById('gaugeWrap').innerHTML = `
+    <svg class="gauge-svg" viewBox="0 0 160 90">
+      <path d="M 10 80 A 70 70 0 0 1 150 80" fill="none" stroke="var(--surface3)" stroke-width="10" stroke-linecap="round"/>
+      <path d="M 10 80 A 70 70 0 0 1 150 80" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round"
+        stroke-dasharray="${score/100*220} 220" opacity="0.85"/>
+      <line x1="80" y1="80" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="80" cy="80" r="5" fill="white"/>
+    </svg>
+    <div class="gauge-value" style="color:${color}">${score}%</div>
+    <div class="gauge-label">갈등 지수 · ${label}</div>
+  `;
+}
+
+function renderBubbles(data) {
+  document.getElementById('bubbleWrap').innerHTML = `
+    <div class="bubble bubble-ai">
+      <div class="bubble-tag">🤖 AI 중재자 스크립트</div>
+      ${data.mediator_script}
+    </div>
+    <div class="bubble bubble-cop">
+      <div class="bubble-tag">📣 익명 쓴소리 (Cop Feedback)</div>
+      ${data.cop_feedback}
+    </div>
+  `;
+}
+
+function clearAnalysis() {
+  document.getElementById('mediatorInput').value='';
+  document.getElementById('analysisResult').style.display='none';
+  document.getElementById('voiceText').textContent='';
+  document.getElementById('voicePlaceholder').style.display='inline';
+  document.getElementById('voiceText').style.display='none';
+  voiceTranscript='';
+}
+
+// ══════════════════════════════
+// 탭3: Vicy
+// ══════════════════════════════
+function setAnger(text) {
+  document.getElementById('vicyInput').value = text;
+}
+function setMode(m) {
+  vicyMode = m;
+  document.getElementById('modeGrandma').classList.toggle('active', m==='grandma');
+  document.getElementById('modeBiz').classList.toggle('active', m==='biz');
+}
+
+async function transformVicy() {
+  const text = document.getElementById('vicyInput').value.trim();
+  if (!text) { showToast('변환할 말을 입력해주세요'); return; }
+  const result = document.getElementById('vicyResult');
+  result.classList.add('show');
+  result.innerHTML = '<div class="loading"><span></span><span></span><span></span></div>';
+  document.getElementById('vicyCopyBtn').classList.remove('show');
+
+  const stylePrompt = vicyMode === 'grandma'
+    ? '시골 할머니가 손자에게 말하듯 따뜻한 경상도/전라도 사투리로, 애정 넘치게 부드럽게 돌려서 말해줘. 이모티콘 1~2개 포함.'
+    : '세련된 비즈니스 이메일 문체로, 정중하고 우아하게 쿠션어를 넣어 변환해줘. 카카오톡으로 바로 보낼 수 있게.';
+
+  const prompt = `다음 불만을 ${stylePrompt}\n원문: "${text}"\n변환문만 출력해줘.`;
+
+  try {
+    const res = await callGemini(prompt);
+    result.textContent = res;
+    document.getElementById('vicyCopyBtn').classList.add('show');
+  } catch(e) {
+    if (vicyMode === 'grandma') {
+      result.textContent = '아이고 우리 이쁜 동무야~ 바쁜가 보제잉, 근디 답장 한 번만 해주믄 안 되겄어? 기다리는 사람 맘도 생각해줘야지잉 🥺';
+    } else {
+      result.textContent = '안녕하세요. 바쁘신 중에도 이렇게 연락드립니다. 가능하시다면 회신 부탁드려도 될까요? 기다리고 있겠습니다.';
+    }
+    document.getElementById('vicyCopyBtn').classList.add('show');
+  }
+}
+
+function copyVicy() {
+  const text = document.getElementById('vicyResult').textContent;
+  navigator.clipboard.writeText(text).then(() => showToast('📋 클립보드에 복사됐어요!'));
+}
+
+// ══════════════════════════════
+// 탭4: 프레임 브레이커
+// ══════════════════════════════
+const FRAME_Q = [
+  '예산이 0원이라면?',
+  '내일 당장 마일스톤 데모를 해야 한다면?',
+  '팀원이 1명만 남는다면?',
+  '경쟁자가 먼저 출시했다면?',
+  '인터넷 없이 만들어야 한다면?',
+  '내일 투자자 앞에서 발표한다면?'
+];
+
+async function flipFrame(i) {
+  if (frameLoading) return;
+  frameLoading = true;
+  const result = document.getElementById('frameResult');
+  result.classList.add('show');
+  result.innerHTML = `<div style="color:var(--lavender);margin-bottom:8px;font-weight:700">💭 "${FRAME_Q[i]}"</div><div class="loading"><span></span><span></span><span></span></div>`;
+
+  const prompt = `너는 스타트업 멘토야. 고등학생 창업팀이 "${FRAME_Q[i]}" 상황에 처했을 때 즉시 실행 가능한 구체적인 행동 가이드 3가지를 짧고 임팩트 있게 한국어로 알려줘. 각 항목은 이모지로 시작해.`;
+
+  try {
+    const res = await callGemini(prompt);
+    result.innerHTML = `<div style="color:var(--lavender);margin-bottom:10px;font-size:12px;font-weight:700">💭 "${FRAME_Q[i]}"</div>${res.replace(/\n/g,'<br>')}`;
+  } catch(e) {
+    const fallbacks = [
+      '💡 무료 오픈소스 툴만 사용하기\n🤝 재능 기부 네트워크 활용\n📱 MVP는 노코드로 당일 완성',
+      '🎯 핵심 기능 1개만 남기기\n⚡ 완성보다 흐름 시연에 집중\n📝 스토리텔링으로 커버하기',
+      '🏆 1인이 모든 역할 나눠 담당\n📋 역할별 체크리스트 즉시 작성\n🔁 매일 짧은 셀프 점검 루틴',
+      '🚀 우리만의 차별점 재정의하기\n💬 고객 인터뷰 즉시 10건 진행\n🔄 피벗 포인트 30분 내 도출',
+      '✍️ 종이 프로토타입으로 시작\n🗣️ 직접 발로 뛰는 오프라인 검증\n📊 엑셀로 대체 가능한 기능 찾기',
+      '✨ 1분 엘리베이터 피치 작성\n📊 숫자로 말하는 슬라이드 3장\n🎤 핵심 가설과 검증 결과 강조'
+    ];
+    result.innerHTML = `<div style="color:var(--lavender);margin-bottom:10px;font-size:12px;font-weight:700">💭 "${FRAME_Q[i]}"</div>${fallbacks[i].replace(/\n/g,'<br>')}`;
+  }
+  frameLoading = false;
+}
+
+// 합의록
+function renderDecisions() {
+  const list = document.getElementById('decisionList');
+  if (!decisions.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:8px">아직 박제된 결정이 없어요</div>';
+    return;
+  }
+  list.innerHTML = decisions.map((d,i) => `
+    <div class="decision-item">
+      <div class="decision-time">${d.time}</div>
+      <div class="decision-text">${d.text}</div>
+      <div class="decision-del" onclick="removeDecision(${i})">×</div>
+    </div>
+  `).join('');
+}
+
+function addDecision() {
+  const text = document.getElementById('decisionInput').value.trim();
+  if (!text) { showToast('결정 사항을 입력해주세요'); return; }
+  const now = new Date();
+  const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  decisions.unshift({ text, time });
+  localStorage.setItem('sp_decisions', JSON.stringify(decisions));
+  document.getElementById('decisionInput').value = '';
+  renderDecisions();
+  showToast('🔒 결정이 박제됐어요!');
+}
+
+function removeDecision(i) {
+  decisions.splice(i,1);
+  localStorage.setItem('sp_decisions', JSON.stringify(decisions));
+  renderDecisions();
+}
+
+renderDecisions();
+</script>
+</body>
+</html>
